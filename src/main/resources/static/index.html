@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CTAGS | Task Management</title>
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--ink:#202943;--muted:#788198;--line:#e6eaf2;--accent:#5b5ce2;--ok:#16865b;--err:#d64545}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+header{min-height:76px;background:white;padding:18px 5%;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);gap:12px}
+header h1{font-size:19px;font-weight:800;margin:0;letter-spacing:-.5px}
+.brand{color:var(--accent)}.header-right{display:flex;align-items:center;gap:12px}
+main{max-width:1180px;margin:34px auto;padding:0 24px}
+.page-heading{margin-bottom:24px}.page-heading h2{margin:0 0 7px;font-size:25px;letter-spacing:-.7px}
+.page-heading p{margin:0;color:var(--muted);line-height:1.6}
+.card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:25px;margin-bottom:24px;box-shadow:0 6px 24px rgba(32,41,67,.035)}
+h2.section-title{font-size:18px;font-weight:750;margin:0 0 20px}
+label{display:block;font-size:13px;font-weight:600;color:#626c83;margin:15px 0 7px}
+input,select,textarea{width:100%;padding:12px 13px;border:1px solid #dfe4ef;border-radius:9px;background:white;color:var(--ink);font:inherit;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(91,92,226,.12)}
+button{background:var(--accent);color:white;border:0;border-radius:9px;padding:11px 18px;font:inherit;font-weight:650;cursor:pointer;margin-top:18px;transition:background .15s,transform .15s}
+button:hover{background:#4849ca;transform:translateY(-1px)}
+button.link{background:transparent;color:var(--accent);padding:7px 10px;margin:0}
+button.small{padding:7px 12px;margin:0;font-size:12px;border-radius:7px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 22px}
+.stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:white;border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:14px;padding:22px;box-shadow:0 6px 24px rgba(32,41,67,.035)}
+.stat-card:nth-child(2){border-top-color:#d59b32}.stat-card:nth-child(3){border-top-color:#4388e8}.stat-card:nth-child(4){border-top-color:#21a477}
+.stat-label{color:var(--muted);font-size:12px;font-weight:650}
+.stat-number{font-size:32px;font-weight:800;margin:12px 0 5px;letter-spacing:-1px}
+.stat-note{color:var(--muted);font-size:11px}
+.toolbar{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:18px}
+.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:15px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.6px;background:#fafbfe;white-space:nowrap}
+tbody tr:hover{background:#fafbff}tr:last-child td{border-bottom:0}
+.tag{display:inline-block;padding:5px 9px;border-radius:7px;font-size:11px;font-weight:700;background:#edf0f7;color:#566078;white-space:nowrap}
+.tag.low{background:#e9f7ef;color:#16804a}.tag.medium{background:#eaf0ff;color:#365cc8}
+.tag.high,.tag.critical{background:#ffebeb;color:#c43636}.tag.in_progress{background:#fff2dc;color:#a4660b}
+.tag.submitted,.tag.graded{background:#e4f7ed;color:#147b50}.tag.assigned{background:#eeefff;color:#5555c8}
+.msg{font-size:13px;margin-top:12px;font-weight:600;min-height:16px}
+.msg.err{color:var(--err)}.msg.ok{color:var(--ok)}.hidden{display:none!important}
+#login{max-width:430px;margin:65px auto;padding:34px}#login h2{font-size:24px}
+#login button:not(.link){width:100%;padding:13px;margin-top:22px}
+#assign{border-top:4px solid var(--accent)}
+@media(max-width:800px){.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}main{margin:22px auto;padding:0 14px}}
+@media(max-width:600px){header{padding:15px}header h1{font-size:15px}.header-right{gap:5px}#who{display:none}.card{padding:17px;border-radius:12px}.grid,.toolbar{grid-template-columns:1fr}.stat-card{padding:15px}.stat-number{font-size:26px}.page-heading h2{font-size:22px}table{min-width:650px}#taskList{padding:12px}}
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="brand">CTAGS</span> · Task Management</h1>
+  <div id="whoami" class="header-right hidden">
+    <span id="who"></span>
+    <button class="link" onclick="logout()">Log out</button>
+  </div>
+</header>
+
+<main>
+  <section id="login" class="card">
+    <h2 class="section-title">Welcome back</h2>
+    <p style="color:var(--muted)">Sign in to manage your corporate tasks.</p>
+    <form id="loginForm">
+      <label for="email">Email address</label>
+      <input id="email" type="email" value="manager@ctags.com" autocomplete="username" required>
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password" required>
+      <button type="submit">Sign in →</button>
+    </form>
+    <div id="loginMsg" class="msg"></div>
+  </section>
+
+  <section id="workspace" class="hidden">
+    <div class="page-heading">
+      <h2 id="welcomeTitle">Dashboard</h2>
+      <p>Track assignments, monitor progress, and manage your work.</p>
+    </div>
+
+    <section id="dashboardStats" class="stats-grid">
+      <div class="stat-card"><div class="stat-label">TOTAL TASKS</div><div class="stat-number" id="totalTasks">0</div><div class="stat-note">Tasks in your list</div></div>
+      <div class="stat-card"><div class="stat-label">PENDING</div><div class="stat-number" id="pendingTasks">0</div><div class="stat-note">Awaiting start</div></div>
+      <div class="stat-card"><div class="stat-label">IN PROGRESS</div><div class="stat-number" id="progressTasks">0</div><div class="stat-note">Currently active</div></div>
+      <div class="stat-card"><div class="stat-label">COMPLETED</div><div class="stat-number" id="completedTasks">0</div><div class="stat-note">Submitted or graded</div></div>
+    </section>
+
+    <section id="assign" class="card hidden">
+      <h2 class="section-title">＋ Assign a task</h2>
+      <form id="taskForm">
+        <div class="grid">
+          <div><label for="tTitle">Task title</label><input id="tTitle" required placeholder="e.g. Prepare monthly report"></div>
+          <div><label for="tAssignee">Assign to</label><select id="tAssignee" required></select></div>
+          <div><label for="tPriority">Priority</label><select id="tPriority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option><option value="critical">Critical</option></select></div>
+          <div><label for="tWeight">Weightage (1–5)</label><input id="tWeight" type="number" min="1" max="5" value="1" required></div>
+          <div><label for="tDeadline">Deadline</label><input id="tDeadline" type="datetime-local" required></div>
+        </div>
+        <label for="tDesc">Description</label>
+        <textarea id="tDesc" rows="3" placeholder="Describe the task and expected outcome"></textarea>
+        <button type="submit" id="assignButton">Assign task →</button>
+      </form>
+      <div id="assignMsg" class="msg"></div>
+    </section>
+
+    <section id="taskList" class="card">
+      <h2 id="listTitle" class="section-title">Tasks</h2>
+      <div class="toolbar">
+        <input id="taskSearch" type="search" placeholder="Search tasks by title or person...">
+        <select id="statusFilter" aria-label="Filter tasks by status">
+          <option value="all">All statuses</option>
+          <option value="assigned">Pending</option>
+          <option value="in_progress">In progress</option>
+          <option value="submitted">Submitted</option>
+          <option value="graded">Graded</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Task</th><th>Priority</th><th>Deadline</th><th id="personCol">Assigned to</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="tasks"><tr><td colspan="6">Loading tasks...</td></tr></tbody>
+        </table>
+      </div>
+      <div id="taskCount" class="stat-note" style="margin-top:15px"></div>
+    </section>
+  </section>
+</main>
+
+<script>
+/*
+ * CTAGS frontend.
+ * Tasks are loaded from and saved to the Spring Boot backend.
+ * The backend/database—not this page—must store task records permanently.
+ */
+
+let token = localStorage.getItem("ctagsToken") || sessionStorage.getItem("ctags_token");
+let user = null;
+let allTasks = [];
+
+try {
+  user = JSON.parse(localStorage.getItem("ctagsUser") || sessionStorage.getItem("ctags_user") || "null");
+} catch {
+  user = null;
+}
+
+function show(id, visible) {
+  document.getElementById(id).classList.toggle("hidden", !visible);
+}
+
+function message(id, text, success = false) {
+  const element = document.getElementById(id);
+  element.textContent = text;
+  element.className = "msg " + (success ? "ok" : "err");
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[char]);
+}
+
+async function api(path, options = {}) {
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {})
+  };
+
+  if (token) headers.Authorization = "Bearer " + token;
+
+  const response = await fetch(path, { ...options, headers });
+  const text = await response.text();
+  let data = {};
+
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { message: text };
+    }
+  }
+
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw new Error("Login expired or you do not have permission. Please sign in again if needed.");
+    }
+    throw new Error(data.message || data.error || `Request failed (${response.status})`);
+  }
+
+  return data;
+}
+
+function getRole() {
+  return String(user?.role || user?.userRole || "").toLowerCase();
+}
+
+function getUserName() {
+  return user?.name || user?.fullName || user?.email || "User";
+}
+
+function getTaskList(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.tasks)) return data.tasks;
+  if (Array.isArray(data.content)) return data.content;
+  return [];
+}
+
+function getTaskPerson(task) {
+  return getRole() === "employee"
+    ? (task.assigned_by_name || task.assignedByName || task.assigned_by?.name || "—")
+    : (task.assigned_to_name || task.assignedToName || task.assigned_to?.name || task.assignedTo?.name || "—");
+}
+
+async function login(event) {
+  if (event) event.preventDefault();
+
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+
+  message("loginMsg", "Signing in...", true);
+
+  try {
+    const data = await api("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password })
+    });
+
+    if (!data.token) {
+      throw new Error("The server did not return a login token. Check the login response in your backend.");
+    }
+
+    token = data.token;
+    user = data.user || data.currentUser || data.profile || null;
+
+    // Keep the token after refreshing the page.
+    localStorage.setItem("ctagsToken", token);
+    sessionStorage.setItem("ctags_token", token);
+
+    if (user) {
+      localStorage.setItem("ctagsUser", JSON.stringify(user));
+      sessionStorage.setItem("ctags_user", JSON.stringify(user));
+    }
+
+    // If login doesn't return user details, get them from the API if available.
+    if (!user) {
+      try {
+        const profile = await api("/api/auth/me");
+        user = profile.user || profile;
+      } catch {
+        user = { name: email.split("@")[0], email, role: "manager" };
+      }
+    }
+
+    if (user && !user.role && !user.userRole) {
+      user.role = "manager";
+    }
+
+    localStorage.setItem("ctagsUser", JSON.stringify(user));
+    sessionStorage.setItem("ctags_user", JSON.stringify(user));
+
+    message("loginMsg", "", true);
+    await render();
+  } catch (error) {
+    message("loginMsg", error.message || "Login failed.");
+  }
+}
+
+function logout() {
+  localStorage.removeItem("ctagsToken");
+  localStorage.removeItem("ctagsUser");
+  sessionStorage.removeItem("ctags_token");
+  sessionStorage.removeItem("ctags_user");
+
+  token = null;
+  user = null;
+  allTasks = [];
+
+  document.getElementById("password").value = "";
+  document.getElementById("tasks").innerHTML = "";
+  show("login", true);
+  show("whoami", false);
+  show("workspace", false);
+}
+
+async function render() {
+  const loggedIn = Boolean(token && user);
+
+  show("login", !loggedIn);
+  show("whoami", loggedIn);
+  show("workspace", loggedIn);
+
+  if (!loggedIn) return;
+
+  document.getElementById("who").textContent = `${getUserName()} (${getRole() || "user"})`;
+  document.getElementById("welcomeTitle").textContent = `Welcome, ${getUserName()}`;
+
+  const role = getRole();
+  document.getElementById("listTitle").textContent =
+    role === "employee" ? "My tasks" :
+    role === "manager" ? "Tasks I assigned" : "All tasks";
+
+  document.getElementById("personCol").textContent =
+    role === "employee" ? "Assigned by" : "Assigned to";
+
+  show("assign", role === "manager" || role === "admin");
+
+  if (role === "manager" || role === "admin") {
+    try {
+      await loadTeam();
+    } catch (error) {
+      message("assignMsg", "Could not load employees: " + error.message);
+    }
+  }
+
+  await loadTasks();
+}
+
+async function loadTeam() {
+  const data = await api("/api/users");
+  const users = Array.isArray(data) ? data : (data.users || []);
+
+  const employees = users.filter(person =>
+    String(person.role || person.userRole || "").toLowerCase() === "employee"
+  );
+
+  const select = document.getElementById("tAssignee");
+
+  if (!employees.length) {
+    select.innerHTML = '<option value="">No employees available</option>';
+    return;
+  }
+
+  select.innerHTML = employees.map(person => {
+    const id = person.id ?? person.userId;
+    const name = person.name || person.fullName || person.email || `Employee ${id}`;
+    return `<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>`;
+  }).join("");
+}
+
+function updateStats(tasks) {
+  document.getElementById("totalTasks").textContent = tasks.length;
+  document.getElementById("pendingTasks").textContent =
+    tasks.filter(task => task.status === "assigned").length;
+  document.getElementById("progressTasks").textContent =
+    tasks.filter(task => task.status === "in_progress").length;
+  document.getElementById("completedTasks").textContent =
+    tasks.filter(task => task.status === "submitted" || task.status === "graded").length;
+}
+
+async function loadTasks() {
+  const body = document.getElementById("tasks");
+  body.innerHTML = '<tr><td colspan="6">Loading tasks...</td></tr>';
+
+  try {
+    // Always reload from the backend/database. Never rely on an in-memory array.
+    const data = await api("/api/tasks");
+    allTasks = getTaskList(data);
+    updateStats(allTasks);
+    applyFilters();
+  } catch (error) {
+    body.innerHTML = `<tr><td colspan="6">${escapeHtml(error.message)}</td></tr>`;
+    document.getElementById("taskCount").textContent = "Could not load tasks.";
+  }
+}
+
+function applyFilters() {
+  const query = document.getElementById("taskSearch").value.trim().toLowerCase();
+  const status = document.getElementById("statusFilter").value;
+
+  const filtered = allTasks.filter(task => {
+    const person = getTaskPerson(task);
+    const text = `${task.title || ""} ${person || ""} ${task.description || ""}`.toLowerCase();
+    return (status === "all" || task.status === status) && text.includes(query);
+  });
+
+  document.getElementById("tasks").innerHTML = filtered.map(task => {
+    const id = Number(task.id ?? task.taskId);
+    const taskStatus = String(task.status || "assigned").toLowerCase();
+    const priority = String(task.priority || "medium").toLowerCase();
+    const deadline = task.deadline || task.dueDate || "—";
+    const person = getTaskPerson(task);
+    let action = "";
+
+    if (getRole() === "employee" && taskStatus === "assigned") {
+      action = `<button class="small" onclick="setStatus(${id},'in_progress')">Start</button>`;
+    } else if (getRole() === "employee" && taskStatus === "in_progress") {
+      action = `<button class="small" onclick="setStatus(${id},'submitted')">Submit</button>`;
+    } else if ((getRole() === "manager" || getRole() === "admin") && taskStatus === "submitted") {
+      action = `<button class="small" onclick="gradeTask(${id})">Grade</button>`;
+    } else if (taskStatus === "graded") {
+      action = `<button class="small" onclick="viewGrade(${id})">View grade</button>`;
+    }
+
+    return `<tr>
+      <td>${escapeHtml(task.title || "Untitled task")}</td>
+      <td><span class="tag ${escapeHtml(priority)}">${escapeHtml(priority)}</span></td>
+      <td>${escapeHtml(String(deadline).replace("T", " "))}</td>
+      <td>${escapeHtml(person)}</td>
+      <td><span class="tag ${escapeHtml(taskStatus)}">${escapeHtml(taskStatus.replace(/_/g, " "))}</span></td>
+      <td>${action}</td>
+    </tr>`;
+  }).join("") || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:28px">No matching tasks.</td></tr>';
+
+  document.getElementById("taskCount").textContent =
+    `Showing ${filtered.length} of ${allTasks.length} tasks`;
+}
+
+async function createTask(event) {
+  if (event) event.preventDefault();
+
+  const button = document.getElementById("assignButton");
+  const title = document.getElementById("tTitle").value.trim();
+  const assigneeValue = document.getElementById("tAssignee").value;
+  const deadline = document.getElementById("tDeadline").value;
+  const weightage = Number(document.getElementById("tWeight").value);
+
+  if (!title || !assigneeValue || !deadline) {
+    message("assignMsg", "Please enter the title, employee and deadline.");
+    return;
+  }
+
+  if (!Number.isFinite(weightage) || weightage < 1 || weightage > 5) {
+    message("assignMsg", "Weightage must be between 1 and 5.");
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "Saving task...";
+
+  const assignedId = Number(assigneeValue);
+  const priority = document.getElementById("tPriority").value;
+  const description = document.getElementById("tDesc").value.trim();
+
+  try {
+    /*
+     * Try the backend field names used by the project first.
+     * If the API rejects them, show the actual backend error instead of
+     * pretending that the task was saved.
+     */
+    await api("/api/tasks", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        description,
+        assigned_to: assignedId,
+        priority,
+        weightage,
+        deadline
+      })
+    });
+
+    document.getElementById("taskForm").reset();
+    document.getElementById("tWeight").value = "1";
+    message("assignMsg", "Task assigned and saved successfully.", true);
+
+    // Fetch the persisted record again from the backend.
+    await loadTasks();
+  } catch (firstError) {
+    message("assignMsg", firstError.message || "Task could not be saved.");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Assign task →";
+  }
+}
+
+async function setStatus(id, status) {
+  try {
+    await api(`/api/tasks/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status })
+    });
+    await loadTasks();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+async function gradeTask(id) {
+  function askScore(label) {
+    const value = prompt(`${label} score (0–10):`, "8");
+    if (value === null) return null;
+    if (!/^(10|[0-9])$/.test(value.trim())) {
+      alert(`${label} must be a whole number from 0 to 10.`);
+      return undefined;
+    }
+    return Number(value.trim());
+  }
+
+  const quality = askScore("Quality");
+  if (quality == null) return;
+  const timeliness = askScore("Timeliness");
+  if (timeliness == null) return;
+  const completeness = askScore("Completeness");
+  if (completeness == null) return;
+  const communication = askScore("Communication");
+  if (communication == null) return;
+  const comments = prompt("Feedback comments (optional):", "") ?? "";
+
+  try {
+    const result = await api(`/api/tasks/${id}/grade`, {
+      method: "POST",
+      body: JSON.stringify({ quality, timeliness, completeness, communication, comments })
+    });
+
+    const grade = result.grade || result;
+    alert(`Task graded successfully. Final score: ${Number(grade.final_score ?? grade.finalScore ?? 0).toFixed(1)}%`);
+    await loadTasks();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+async function viewGrade(id) {
+  try {
+    const result = await api(`/api/tasks/${id}/grade`);
+    const grade = result.grade || result;
+
+    alert(
+      `Final score: ${Number(grade.final_score ?? grade.finalScore ?? 0).toFixed(1)}%\n` +
+      `Quality: ${grade.quality ?? "—"}/10\n` +
+      `Timeliness: ${grade.timeliness ?? "—"}/10\n` +
+      `Completeness: ${grade.completeness ?? "—"}/10\n` +
+      `Communication: ${grade.communication ?? "—"}/10\n` +
+      `Comments: ${grade.comments || "None"}`
+    );
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+document.getElementById("loginForm").addEventListener("submit", login);
+document.getElementById("taskForm").addEventListener("submit", createTask);
+document.getElementById("taskSearch").addEventListener("input", applyFilters);
+document.getElementById("statusFilter").addEventListener("change", applyFilters);
+
+// Restore the session after refresh and load tasks from the server.
+if (token && user) {
+  render();
+} else {
+  show("login", true);
+  show("workspace", false);
+  show("whoami", false);
+}
+</script>
+</body>
+</html>
